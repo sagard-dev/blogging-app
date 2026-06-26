@@ -1,5 +1,6 @@
 const { createHmac, randomBytes } = require("crypto");
 const { Schema, model } = require("mongoose");
+const {createTokenForUser} = require('../services/authentication')
 
 const userSchema = new Schema(
   {
@@ -40,7 +41,7 @@ userSchema.pre("save", function (next) {
   const user = this;
 
   //this will check is the password modified ? for new user it is true , suppose if user only change the fullName then this will be false & return
-  
+
   if (!user.isModified("password")) return;
 
   const salt = randomBytes(16).toString();
@@ -54,22 +55,28 @@ userSchema.pre("save", function (next) {
 
 //static used to add a method to class , here mongoose treats the Model as class
 //this should be added to schema not to User model
-userSchema.static("matchPassword", async function (email, password) {
-  // this refers to User Model, because when Mongoose creates the User model and attaches the method to it so ...
-  const user = await this.findOne({ email });
-  if (!user) throw new Error("User not found!")
+userSchema.static(
+  "matchPasswordAndGenerateToken",
+  async function (email, password) {
+    // this refers to User Model, because when Mongoose creates the User model and attaches the method to it so ...
+    const user = await this.findOne({ email });
+    if (!user) throw new Error("User not found!");
 
-  const salt = user.salt;
-  const hashedPassword = user.password;
+    const salt = user.salt;
+    const hashedPassword = user.password;
 
-  const userProvidedHash = createHmac("sha256", salt)
-    .update(password)
-    .digest("hex")
-    
-    if(hashedPassword !== userProvidedHash)throw new Error("Incorrect Password")
+    const userProvidedHash = createHmac("sha256", salt)
+      .update(password)
+      .digest("hex");
 
-  return user;
-});
+    if (hashedPassword !== userProvidedHash)
+      throw new Error("Incorrect Password");
+
+    const token = createTokenForUser(user);
+
+    return token;
+  },
+);
 
 const User = model("user", userSchema);
 
