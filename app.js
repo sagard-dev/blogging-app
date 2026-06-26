@@ -42,3 +42,7 @@ app.use("/user", userRoute);
 app.use("/blog", blogRoute);
 
 app.listen(PORT, () => console.log(`Server started at PORT:${PORT}`));
+
+
+// MONGO_URL = mongodb://localhost:27017/blogify
+// PORT = 5678
